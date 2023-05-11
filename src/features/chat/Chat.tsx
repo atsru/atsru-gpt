@@ -22,7 +22,7 @@ const ChatComponent = () => {
         <div className="ml-20">
             <label htmlFor="">
                 open ai model
-                <select>
+                <select className="form-select">
                     {orderedAiModels.map((m) => (
                         <option key={m}>{m}</option>
                     ))}
