@@ -1,21 +1,25 @@
 import { Configuration, OpenAIApi } from "openai";
+import { OpenAiRequest } from "../models";
 
-const configuration = new Configuration({
-    organization: "org-YUzg57Cn6m55GxLmJ19Dokpf",
-    apiKey: "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",
-});
-const openai = new OpenAIApi(configuration);
+const getOpenAiService = ({ apiKey, organization }: OpenAiRequest) => {
+    const configuration = new Configuration({
+        apiKey,
+        organization,
+    });
+    const openai = new OpenAIApi(configuration);
+    return openai;
+};
 
 export const openAiApi = {
-    generateTextResponse: async (text: string, model: string) => {
-        const response = await openai.createChatCompletion({
-            model,
-            messages: [{ role: "user", content: text }],
+    generateTextResponse: async (request: OpenAiRequest) => {
+        const response = await getOpenAiService(request).createChatCompletion({
+            model: request.model,
+            messages: [{ role: "user", content: request.text }],
         });
         return response.data.choices[0].message?.content ?? "";
     },
-    listModels: async () => {
-        const models = await openai.listModels();
+    listModels: async (request: OpenAiRequest) => {
+        const models = await getOpenAiService(request).listModels();
         return models.data.data;
     },
 };
