@@ -58,8 +58,8 @@ export const refreshAiModels = createAsyncThunk(
     "chat/refreshModels",
     async (_, { getState, rejectWithValue }) => {
         const state = getState() as RootState;
-        const { apiKey, orgId, model } = state.chatReducer;
-        if (!apiKey || !orgId || !model) {
+        const { apiKey, orgId } = state.chatReducer;
+        if (!apiKey || !orgId) {
             return rejectWithValue("Missing Open AI API values");
         }
         const request: OpenAiListModelRequest = {
