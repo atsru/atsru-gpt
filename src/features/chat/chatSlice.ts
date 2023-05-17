@@ -2,51 +2,69 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { openAiApi } from "../../apis";
 import _ from "lodash";
-import { OpenAiRequest } from "../../models";
+import { OpenAiListModelRequest } from "../../models";
 import { cache } from "../../services";
 import { RootState } from "../../state/store";
+import { db } from "../../services/database";
 
 interface ChatState {
-    message: string;
-    temperature: number;
-    replies: string[];
+    sentMessages: string[];
+    replies: { reply: string; text: string }[];
+    infoMessages: string[];
+    aiModels: string[];
     apiKey: string;
     orgId: string;
-    aiModels: string[];
     model: string;
-    displayMessages: string[];
+    temperature: number;
+    waitingReply: boolean;
 }
 
 const initialState: ChatState = {
-    message: "",
+    sentMessages: [],
     replies: [],
     temperature: 0.3,
     orgId: "",
     apiKey: "",
     model: "",
     aiModels: [],
-    displayMessages: [],
+    infoMessages: [],
+    waitingReply: false,
 };
 
 export const sendMessageToApi = createAsyncThunk(
     "chat/sendText",
-    async (request: OpenAiRequest) => {
-        const response = await openAiApi.generateTextResponse(request);
-        return response;
+    async (text: string, { getState, rejectWithValue }) => {
+        const state = getState() as RootState;
+        const { apiKey, orgId, model } = state.chatReducer;
+        if (!apiKey || !orgId || !model) {
+            return rejectWithValue("Missing Open AI API values");
+        }
+        const response = await openAiApi.generateTextResponse({
+            apiKey,
+            orgId,
+            model,
+            text,
+        });
+        return { reply: response, text };
     }
 );
+
+export const loadReplies = createAsyncThunk("chat/loadReplies", async () => {
+    const replies = await db.replies.toArray();
+    return replies.map((r) => ({ reply: r.reply, text: r.text }));
+});
 
 export const refreshAiModels = createAsyncThunk(
     "chat/refreshModels",
     async (_, { getState, rejectWithValue }) => {
         const state = getState() as RootState;
-        const { apiKey, orgId } = state.chatReducer;
-        if (!apiKey || !orgId) {
+        const { apiKey, orgId, model } = state.chatReducer;
+        if (!apiKey || !orgId || !model) {
             return rejectWithValue("Missing Open AI API values");
         }
-        const request: OpenAiRequest = {
+        const request: OpenAiListModelRequest = {
             apiKey,
-            organization: orgId,
+            orgId,
         };
         // use memo for this
         const models = await openAiApi.listModels(request);
@@ -58,9 +76,6 @@ export const chatSlice = createSlice({
     name: "chat",
     initialState,
     reducers: {
-        write: (state, action: PayloadAction<string>) => {
-            state.message = action.payload;
-        },
         save: (
             state,
             action: PayloadAction<{
@@ -89,16 +104,11 @@ export const chatSlice = createSlice({
             state.orgId = "";
         },
         removeDisplayMessage: (state, action: PayloadAction<number>) => {
-            state.displayMessages = state.displayMessages.filter(
-                (v, i, a) => i != action.payload
-            );
+            state.infoMessages.splice(action.payload, 1);
         },
     },
     extraReducers: (builder) =>
         builder
-            .addCase(sendMessageToApi.fulfilled, (state, action) => {
-                state.replies.push(action.payload);
-            })
             .addCase(refreshAiModels.fulfilled, (state, action) => {
                 let openAiModelIds: string[] = [];
                 if (action.payload.length > 0) {
@@ -114,11 +124,27 @@ export const chatSlice = createSlice({
                 state.orgId = orgId ?? "";
             })
             .addCase(refreshAiModels.rejected, (state, action) => {
-                state.displayMessages.push(action.payload as string);
+                state.infoMessages.push(action.payload as string);
+            })
+            .addCase(sendMessageToApi.fulfilled, (state, action) => {
+                db.replies.add(action.payload);
+                state.replies.push({
+                    reply: action.payload.reply,
+                    text: action.payload.text,
+                });
+                state.waitingReply = false;
+            })
+            .addCase(sendMessageToApi.pending, (state) => {
+                state.waitingReply = true;
+            })
+            .addCase(sendMessageToApi.rejected, (state) => {
+                state.waitingReply = false;
+            })
+            .addCase(loadReplies.fulfilled, (state, action) => {
+                state.replies = action.payload;
             }),
 });
 
-export const { write, load, save, clear, removeDisplayMessage } =
-    chatSlice.actions;
+export const { load, save, clear, removeDisplayMessage } = chatSlice.actions;
 
 export default chatSlice.reducer;

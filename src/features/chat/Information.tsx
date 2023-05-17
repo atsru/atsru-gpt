@@ -1,10 +1,8 @@
 import { useAppDispatch, useAppSelector } from "../../state/hooks";
 import { removeDisplayMessage } from "./chatSlice";
 
-const MessagesComponent = () => {
-    const messages = useAppSelector(
-        (state) => state.chatReducer.displayMessages
-    );
+const InformationComponent = () => {
+    const messages = useAppSelector((state) => state.chatReducer.infoMessages);
     const dispatch = useAppDispatch();
     const removeElementAt = (i: number) => {
         dispatch(removeDisplayMessage(i));
@@ -37,4 +35,4 @@ const MessagesComponent = () => {
     );
 };
 
-export { MessagesComponent };
+export { InformationComponent };
