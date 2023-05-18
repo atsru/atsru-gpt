@@ -7,9 +7,15 @@ import { cache } from "../../services";
 import { RootState } from "../../state/store";
 import { db } from "../../services/database";
 
+interface ReplyType {
+    reply: string;
+    text: string;
+    type: "text" | "image";
+    imageUrls?: string[];
+}
 interface ChatState {
     sentMessages: string[];
-    replies: { reply: string; text: string }[];
+    replies: ReplyType[];
     infoMessages: string[];
     aiModels: string[];
     apiKey: string;
@@ -31,6 +37,23 @@ const initialState: ChatState = {
     waitingReply: false,
 };
 
+export const generateImages = createAsyncThunk(
+    "chat/generateImages",
+    async (text: string, { getState, rejectWithValue }) => {
+        const state = getState() as RootState;
+        const { apiKey, orgId } = state.chatReducer;
+        if (!apiKey || !orgId) {
+            return rejectWithValue("Missing Open AI API values");
+        }
+        const imageUrls = await openAiApi.generateImages({
+            apiKey,
+            orgId,
+            prompt: text,
+        });
+        return { imageUrls, text };
+    }
+);
+
 export const sendMessageToApi = createAsyncThunk(
     "chat/sendText",
     async (text: string, { getState, rejectWithValue }) => {
@@ -51,7 +74,12 @@ export const sendMessageToApi = createAsyncThunk(
 
 export const loadReplies = createAsyncThunk("chat/loadReplies", async () => {
     const replies = await db.replies.toArray();
-    return replies.map((r) => ({ reply: r.reply, text: r.text }));
+    return replies.map((r) => ({
+        reply: r.reply,
+        text: r.text,
+        type: r.type ?? "text",
+        imageUrls: r.imageUrls,
+    }));
 });
 
 export const refreshAiModels = createAsyncThunk(
@@ -103,6 +131,10 @@ export const chatSlice = createSlice({
             state.apiKey = "";
             state.orgId = "";
         },
+        clearDb: (state) => {
+            db.replies.clear();
+            state.replies = [];
+        },
         removeDisplayMessage: (state, action: PayloadAction<number>) => {
             state.infoMessages.splice(action.payload, 1);
         },
@@ -127,10 +159,14 @@ export const chatSlice = createSlice({
                 state.infoMessages.push(action.payload as string);
             })
             .addCase(sendMessageToApi.fulfilled, (state, action) => {
-                db.replies.add(action.payload);
+                db.replies.add({
+                    ...action.payload,
+                    type: "text",
+                });
                 state.replies.push({
                     reply: action.payload.reply,
                     text: action.payload.text,
+                    type: "text",
                 });
                 state.waitingReply = false;
             })
@@ -142,9 +178,30 @@ export const chatSlice = createSlice({
             })
             .addCase(loadReplies.fulfilled, (state, action) => {
                 state.replies = action.payload;
+            })
+            .addCase(generateImages.fulfilled, (state, action) => {
+                db.replies.add({
+                    ...action.payload,
+                    reply: "N/A",
+                    type: "image",
+                });
+                state.replies.push({
+                    reply: "N/A",
+                    type: "image",
+                    text: action.payload.text,
+                    imageUrls: action.payload.imageUrls,
+                });
+                state.waitingReply = false;
+            })
+            .addCase(generateImages.pending, (state) => {
+                state.waitingReply = true;
+            })
+            .addCase(generateImages.rejected, (state) => {
+                state.waitingReply = false;
             }),
 });
 
-export const { load, save, clear, removeDisplayMessage } = chatSlice.actions;
+export const { load, save, clear, clearDb, removeDisplayMessage } =
+    chatSlice.actions;
 
 export default chatSlice.reducer;

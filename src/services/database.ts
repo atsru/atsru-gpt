@@ -4,6 +4,8 @@ export interface ReplyRecord {
     id?: number;
     text: string;
     reply: string;
+    type?: "text" | "image";
+    imageUrls?: string[];
 }
 
 export class ChatDatabase extends Dexie {

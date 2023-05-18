@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../state/hooks";
-import { loadReplies, sendMessageToApi } from "./chatSlice";
+import { generateImages, loadReplies, sendMessageToApi } from "./chatSlice";
 import ReactMarkdown from "react-markdown";
 
 const ChatComponent = () => {
@@ -29,7 +29,23 @@ const ChatComponent = () => {
                                     <ReactMarkdown children={reply.text} />
                                 </div>
                                 <div className="card-text">
-                                    <ReactMarkdown children={reply.reply} />
+                                    {reply.type === "text" ? (
+                                        <ReactMarkdown children={reply.reply} />
+                                    ) : (
+                                        <div>
+                                            {reply.imageUrls &&
+                                                reply.imageUrls.map(
+                                                    (url, i) => (
+                                                        <img
+                                                            className="img-thumbnail m-1"
+                                                            key={i}
+                                                            alt="generated img"
+                                                            src={url}
+                                                        />
+                                                    )
+                                                )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -44,7 +60,6 @@ const ChatComponent = () => {
                             rows={5}
                             onKeyDown={(e) => {
                                 if (e.ctrlKey && e.code === "Enter") {
-                                    console.log(text);
                                     e.preventDefault();
                                     setText("");
                                     dispatch(sendMessageToApi(text));
@@ -62,13 +77,39 @@ const ChatComponent = () => {
                                 </span>
                             </div>
                         ) : (
-                            <button
-                                className="btn btn-outline-light"
-                                title="send message"
-                                type="button"
-                            >
-                                <i className="bi bi-caret-right"></i>
-                            </button>
+                            <div className="btn-group">
+                                <button
+                                    className="btn btn-outline-light"
+                                    title="send message"
+                                    type="button"
+                                >
+                                    <i className="bi bi-caret-right"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-light dropdown-toggle dropdown-toggle-split"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                >
+                                    <span className="visually-hidden">
+                                        Toggle Dropdown
+                                    </span>
+                                </button>
+                                <ul className="dropdown-menu">
+                                    <li>
+                                        <a
+                                            className="dropdown-item"
+                                            href="#"
+                                            onClick={() => {
+                                                setText("");
+                                                dispatch(generateImages(text));
+                                            }}
+                                        >
+                                            Generate Image
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         )}
                     </div>
                 </div>

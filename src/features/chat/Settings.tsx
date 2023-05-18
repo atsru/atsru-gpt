@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../state/hooks";
-import { clear, load, refreshAiModels, save } from "./chatSlice";
+import { clear, clearDb, load, refreshAiModels, save } from "./chatSlice";
 
 const SettingsComponent = () => {
     const dispatch = useAppDispatch();
@@ -158,10 +158,17 @@ const SettingsComponent = () => {
                                     </button>
                                     <button
                                         type="button"
-                                        className="btn btn-danger"
+                                        className="btn btn-warning"
                                         onClick={() => dispatch(clear())}
                                     >
-                                        clear
+                                        clear cache
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger"
+                                        onClick={() => dispatch(clearDb())}
+                                    >
+                                        clear db
                                     </button>
                                 </div>
                             </div>
