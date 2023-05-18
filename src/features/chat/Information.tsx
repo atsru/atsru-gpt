@@ -8,12 +8,11 @@ const InformationComponent = () => {
         dispatch(removeDisplayMessage(i));
     };
     return (
-        <div className="container">
-            <div className="row mt-2">
-                <div className="col">
-                    {messages &&
-                        messages.length > 0 &&
-                        messages.map((m, i) => (
+        <div className="container flex-shrink-1">
+            {messages.length > 0 && (
+                <div className="row mt-2">
+                    <div className="col">
+                        {messages.map((m, i) => (
                             <div
                                 className="alert alert-warning alert-dismissible fade show"
                                 role="alert"
@@ -29,8 +28,9 @@ const InformationComponent = () => {
                                 ></button>
                             </div>
                         ))}
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

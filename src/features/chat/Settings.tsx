@@ -24,14 +24,14 @@ const SettingsComponent = () => {
     }, [dispatch]);
 
     return (
-        <div className="container">
+        <div className="container flex-shrink-1">
             <div className="row">
                 <div className="col">
                     <form>
                         <fieldset>
                             <div className="row">
-                                <legend className="col-sm-2">settings</legend>
-                                <div className="col-sm-10">
+                                <legend className="col-2">settings</legend>
+                                <div className="col">
                                     <button
                                         title="expand"
                                         className="btn btn-outline-info"
